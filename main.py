@@ -1,126 +1,104 @@
+"""
+Orchestrate the simulations and display the result in a comprehensive way
+"""
 import argparse
 import matplotlib.pyplot as plt
-from numpy import ndarray
 import numpy as np
 from numpy.random import SeedSequence, SFC64, Generator
-from typing import List, Tuple, Callable
+from typing import List, Callable
+from collections import defaultdict
+
+from measures import compute_measures, append_measures, mean_measures, mean_sojourn_time
+from simulations import exponential_simulation
 
 
-def simulation(get_inter_arrival: Callable, get_service_duration: Callable, get_start_duration: Callable, tau) \
-        -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+# the number of repetitions for each value of rho
+N_SIM = 100
+TAU = 100
+
+
+def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     """
-    Run a single simulation of the system, from t = 0 to t = tau
+    Run all the required simulations for the exponential service time model and display results in CLI or GUI depending
+    on the nature of the result.
 
-    :param get_inter_arrival: function without argument that produces a variate for the interarrival time
-    :param get_service_duration: function without argument that produces a variate for the service duration
-    :param get_start_duration: function without argument that produces a variate for the server start duration
-    :param tau: the limit for the last event arrival
-    :return: a tuple of the arrival times, the service durations, the completion times and the state of the server at
-    client arrival
-    """
-    arrivals = []
-    services = []
-    completions = []
-    states = []
-
-    def arrival():
-        return t + get_inter_arrival()
-
-    def get_start():
-        return t + get_start_duration()
-
-    def completion():
-        service = get_service_duration()
-        services.append(service)
-        events['completion'] = t + service
-        completions.append(events['completion'])
-
-    t = 0
-    t = arrival()
-    events = {
-        'arrival': t,
-        'completion': float('inf'),
-        'start': float('inf'),
-    }
-    in_node = 0
-
-    while t < tau or in_node:
-        next_event = min(events, key=events.get)
-        t = events[next_event]
-
-        if next_event == 'arrival':
-            arrivals.append(t)
-            in_node += 1
-
-            next_arrival = arrival()
-            events['arrival'] = next_arrival if next_arrival <= tau else float('inf')
-
-            if events['completion'] != float('inf'):
-                states.append('on')
-            elif events['start'] != float('inf'):
-                states.append('setup')
-            else:
-                states.append('off')
-                events['start'] = get_start()
-        elif next_event == 'start':
-            events['start'] = float('inf')
-            completion()
-        elif next_event == 'completion':
-            in_node -= 1
-            if in_node > 0:
-                completion()
-            else:
-                events['completion'] = float('inf')
-
-    return np.array(arrivals[:len(completions)]), np.array(services), np.array(completions), np.array(states)
-
-
-def exponential_simulation(generators: List[Generator], _lambda, mu, theta, tau):
+    :param spawn_generators: a function able to spawn generators
+    :return: None
     """
 
-    :param generators:
-    :param _lambda: arrival rate
-    :param mu: service rate
-    :param theta: server starting rate
-    :param tau: the limit for the last event arrival
+    # first parameters set, lambda in [0.05, 0.95], mu = 1 and theta = 0.2
+    lambdas = np.linspace(0.05, 0.95, 100)
+    mu = 1
+    theta = 0.2
+    measures_by_rho = defaultdict(list)
+    for _lambda in lambdas:
+        measures_same_rho = defaultdict(list)
 
-    :return: a tuple of the arrival times, the service durations and the completion times
-    """
+        for _ in range(N_SIM):
+            results = exponential_simulation(spawn_generators(3), _lambda, mu, theta, TAU)
+            measures = compute_measures(*results)
+            append_measures(measures_same_rho, measures)
 
-    def get_inter_arrival():
-        return generators[0].exponential(1 / _lambda)
+        append_measures(measures_by_rho, mean_measures(measures_same_rho))
 
-    def get_service_duration():
-        return generators[1].exponential(1 / mu)
+    rhos = lambdas / mu
 
-    def get_start_duration():
-        return generators[2].exponential(1 / theta)
+    # Checking hypotheses
+    actual_rhos = lambdas * np.array(measures_by_rho['service_mean'])
 
-    return simulation(get_inter_arrival, get_service_duration, get_start_duration, tau)
+    fig_hyp, ax_rho = plt.subplots()
+    fig_hyp.canvas.set_window_title('exponential-checking-hypotheses')
 
+    ax_rho.set(xlabel=r'$\rho$ (expected)', ylabel='value', title=r'$\rho$ by its expected value ($\mu = 1$)')
+    ax_rho.plot(rhos, rhos, label=r'expected $\rho$')
+    ax_rho.step(rhos, actual_rhos, label=r'actual $\rho = \lambda \mathbb{E}[B]$')
+    ax_rho.step(rhos, measures_by_rho['utilization'], label='utilization')
 
-def erlang_simulation(generators: List[Generator], _lambda, mu, theta):
-    """
+    # expected results
+    fig, (ax_sojourn, ax_p_setup, ax_p_on) = plt.subplots(ncols=3, sharex='all')
+    fig.suptitle('Results for the exponential system', fontsize=16)
+    fig.canvas.set_window_title('exponential-lazy-server-results')
 
-    :param generators:
-    :param _lambda: arrival rate
-    :param mu: service rate
-    :param theta: server starting rate
-    :return:
-    """
-    pass
+    ax_sojourn.step(rhos, measures_by_rho['sojourn_mean'], label=r'measured ($\mu = 1$)')
+    ax_sojourn.plot(rhos, mean_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical ($\mu = 1$)')
+    ax_sojourn.set(xlabel=r'$\rho$', ylabel='duration', title=r'$\mathbb{E}[S]$ by $\rho$')
+    ax_p_setup.step(rhos, measures_by_rho['p_setup'], label=r'$\mu = 1$')
+    ax_p_setup.set(xlabel=r'$\rho$', ylabel='$P_{SETUP}$', title=r'$P_{SETUP}$ by $\rho$')
+    ax_p_on.step(rhos, measures_by_rho['p_on'], label=r'$\mu = 1$')
+    ax_p_on.set(xlabel=r'$\rho$', ylabel='$P_{ON}$', title=r'$P_{ON}$ by $\rho$')
 
+    del lambdas, mu, rhos, measures_by_rho, measures_same_rho  # to avoid using values in next scenario
 
-def compute_measures(arrivals: ndarray, services: ndarray, completions: ndarray, states: ndarray):
-    job_count = len(arrivals)
+    # second parameters set, lambda = 1, mu in [1/0.95, 1/0.05] and theta = 0.2
+    _lambda = 1
+    mus = _lambda / np.geomspace(0.05, 0.95, 100)
+    theta = 0.2
+    measures_by_rho = defaultdict(list)
+    for mu in mus:
+        measures_same_rho = defaultdict(list)
 
-    return {
-        'service_mean': services.mean(),
-        'sojourn_mean': (completions.sum() - arrivals.sum()) / job_count,
-        'p_off': (states == 'off').sum() / job_count,
-        'p_setup': (states == 'setup').sum() / job_count,
-        'p_on': (states == 'on').sum() / job_count,
-    }
+        for _ in range(N_SIM):
+            results = exponential_simulation(spawn_generators(3), _lambda, mu, theta, TAU)
+            measures = compute_measures(*results)
+            append_measures(measures_same_rho, measures)
+
+        append_measures(measures_by_rho, mean_measures(measures_same_rho))
+
+    rhos = _lambda / mus
+
+    ax_sojourn.step(rhos, measures_by_rho['sojourn_mean'], label=r'measured ($\lambda = 1$)')
+    ax_sojourn.plot(rhos, mean_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_sojourn.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$')
+    ax_p_setup.step(rhos, measures_by_rho['p_setup'], label=r'measured ($\lambda = 1$)')
+    ax_p_setup.set(xlabel=r'$\rho$', ylabel='$P_{SETUP}$', title=r'$P_{SETUP}$ by $\rho$')
+    ax_p_on.step(rhos, measures_by_rho['p_on'], label=r'$\lambda = 1$')
+    ax_p_on.set(xlabel=r'$\rho$', ylabel='$P_{ON}$', title=r'$P_{ON}$ by $\rho$')
+
+    ax_rho.legend(loc='best')
+    ax_sojourn.legend(loc='best')
+    ax_p_setup.legend(loc='best')
+    ax_p_on.legend(loc='best')
+    fig.subplots_adjust(wspace=0.1)
 
 
 def main():
@@ -135,30 +113,19 @@ def main():
     else:
         seed_seq = SeedSequence()
     print('Seed : ', seed_seq.entropy)
-    # Making more generators than required to anticipate possible further needs
-    generators = [Generator(SFC64(stream)) for stream in seed_seq.spawn(20)]
 
-    _lambda = 1
-    mu = 1 / 0.5
-    theta = 0.2
-    tau = 10000
+    def spawn_generator(n):
+        """
+        Spawn n random generators
 
-    arrivals, services, completions, states = exponential_simulation(generators[:3], _lambda, mu, theta, tau)
-    measures = compute_measures(arrivals, services, completions, states)
+        Generators are insured independent if you spawn less than 2^64 of them and you pull less than 2^64 variates for
+        each generators
 
-    rho_eq = _lambda / mu
+        :return: a list of n generators
+        """
+        return [Generator(SFC64(stream)) for stream in seed_seq.spawn(n)]
 
-    rho_def = _lambda * measures['service_mean']
-    sojourn_mean_theo = 1 / (mu - _lambda) + 1 / theta
-    p_off_theo = (1 - rho_def) / (1 + _lambda / theta)
-    p_setup_theo = (1 - rho_def) / (theta / _lambda + 1)
-    p_on_theo = 1 - p_off_theo - p_setup_theo
-
-    assert np.isclose(rho_def, rho_eq, rtol=0.05), (rho_def, rho_eq)
-    assert np.isclose(sojourn_mean_theo, measures['sojourn_mean'], rtol=0.05), (sojourn_mean_theo, measures['sojourn_mean'])
-    assert np.isclose(p_off_theo, measures['p_off'], rtol=0.05), (p_off_theo, measures['p_off'])
-    assert np.isclose(p_setup_theo, measures['p_setup'], rtol=0.05), (p_setup_theo, measures['p_setup'])
-    assert np.isclose(p_on_theo, measures['p_on'], rtol=0.05), (p_on_theo, measures['p_on'])
+    get_exponential_results(spawn_generator)
 
     plt.tight_layout()
     plt.show()
