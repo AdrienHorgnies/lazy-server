@@ -57,15 +57,13 @@ def simulation(get_inter_arrival: Callable, get_service_duration: Callable, get_
             next_arrival = arrival()  # check t before this happens
             events['arrival'] = next_arrival if next_arrival <= tau else float('inf')
 
-            if in_node > 1 and events['completion'] < float('inf') and events['start'] == float('inf'):
+            if events['completion'] < float('inf'):
                 states.append('on')
-            elif in_node > 1 and events['completion'] == float('inf') and events['start'] < float('inf'):
+            elif events['start'] < float('inf'):
                 states.append('setup')
-            elif in_node == 1 and events['start'] == events['completion'] == float('inf'):
+            else:
                 states.append('off')
                 events['start'] = get_start()
-            else:
-                raise ValueError('should not happen')
         elif next_event == 'start':
             events['start'] = float('inf')
             completion()
