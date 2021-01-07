@@ -48,7 +48,7 @@ def append_measures(base: Dict[str, List[float]], extension: Dict[str, float]):
         base[measure].append(value)
 
 
-def mean_measures(measures_list: Dict[str, List]):
+def mean_measures(measures_list: Dict[str, List[float]]) -> Dict[str, float]:
     """
     Aggregate the list of values of each measure into its mean
 
@@ -66,10 +66,34 @@ def mean_sojourn_time(_lambda, mu, rho, theta):
     """
     Compute the theoretical mean sojourn time
 
-    :param _lambda:
-    :param mu:
-    :param rho:
-    :param theta:
+    :param _lambda: arrival rate
+    :param mu: service rate
+    :param rho: arrival rate / service rate
+    :param theta: setup rate
     :return: theoretical mean sojourn time
     """
     return 1 / mu / (1 - rho) + 1 / theta
+
+
+def compute_p_setup(_lambda, rho, theta):
+    """
+    Compute the theoretical value of P_SETUP
+
+    :param _lambda: arrival rate
+    :param rho: arrival rate / service rate
+    :param theta: setup rate
+    :return: theoretical value of P_SETUP
+    """
+    return (1 - rho) / (theta / _lambda + 1)
+
+
+def compute_p_off(_lambda, rho, theta):
+    """
+    Compute the theoretical value of P_OFF
+
+    :param _lambda: arrival rate
+    :param rho: arrival rate / service rate
+    :param theta: setup rate
+    :return: theoretical value of P_SETUP
+    """
+    return (1 - rho) / (1 + _lambda / theta)
