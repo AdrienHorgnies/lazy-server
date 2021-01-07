@@ -55,7 +55,7 @@ def simulation(get_inter_arrival: Callable, get_service_duration: Callable, get_
             in_node += 1
 
             next_arrival = arrival()  # check t before this happens
-            events['arrival'] = next_arrival if next_arrival <= tau else float('inf')
+            events['arrival'] = next_arrival if next_arrival < tau else float('inf')
 
             if events['completion'] < float('inf'):
                 states.append('on')

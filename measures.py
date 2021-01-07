@@ -1,3 +1,7 @@
+"""
+Functions to manipulate and compute measures from the results of simulations and function to compute measures from
+system parameter.
+"""
 from typing import Dict, List
 
 import numpy as np

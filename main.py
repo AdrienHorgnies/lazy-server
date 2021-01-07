@@ -16,9 +16,9 @@ from tqdm import tqdm
 # the number of repetitions for each value of rho
 N_SIM = 100
 # the time at which the simulation stops
-TAU = 1000
-# the number of samples for rho
-SAMPLES = 100
+TAU = 100
+# the number of values tested for rho between 0.05 and 0.95
+STEPS = 100
 
 
 def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
@@ -29,10 +29,10 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     :param spawn_generators: a function able to spawn generators
     :return: None
     """
-    progress_bar = tqdm(total=2*SAMPLES*N_SIM)
+    progress_bar = tqdm(total=2 * STEPS * N_SIM)
 
     # first parameters set, lambda in [0.05, 0.95], mu = 1 and theta = 0.2
-    rhos = np.linspace(0.05, 0.95, SAMPLES)
+    rhos = np.linspace(0.05, 0.95, STEPS)
     mu = 1
     lambdas = mu * rhos
     theta = 0.2
@@ -57,7 +57,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     ax_rho.set(xlabel=r'$\rho$ (expected)', ylabel='value', title=r'$\rho$ by its expected value ($\mu = 1$)')
     ax_rho.plot(rhos, rhos, label=r'expected $\rho$')
     ax_rho.step(rhos, actual_rhos, label=r'actual $\rho = \lambda \mathbb{E}[B]$')
-    ax_rho.step(rhos, measures_by_rho['utilization'], label='utilization')  # Did I mention rho tends to be utilization ?
+    ax_rho.step(rhos, measures_by_rho['utilization'], label=r'$\overline{x}$')
 
     # expected results
     fig, (ax_sojourn, ax_p_setup, ax_p_off) = plt.subplots(ncols=3, sharex='all')
