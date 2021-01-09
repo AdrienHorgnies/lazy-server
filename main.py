@@ -40,7 +40,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     mu = 1
     lambdas = mu * rhos
     theta = 0.4
-    measures_by_rho = defaultdict(list)
+    measures_by_rho_mu = defaultdict(list)
     for _lambda in lambdas:
         measures_same_rho = defaultdict(list)
 
@@ -55,54 +55,12 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
             append_measures(measures_same_rho, measures)
             progress_bar.update(1)
 
-        append_measures(measures_by_rho, mean_measures(measures_same_rho, ref))
-
-    # Checking hypotheses, mu = 1
-    messages.append('# Checking hypotheses, mu = 1')
-    sojourn_test = sum(measures_by_rho['test_mean_sojourn']) / len(measures_by_rho['test_mean_sojourn'])
-    messages.append('test for sojourn_time : %s' % sojourn_test)
-    p_setup_test = sum(measures_by_rho['test_p_setup']) / len(measures_by_rho['test_p_setup'])
-    messages.append('test for p_setup : %s' % p_setup_test)
-    p_off_test = sum(measures_by_rho['test_p_off']) / len(measures_by_rho['test_p_off'])
-    messages.append('test for p_off : %s' % p_off_test)
-
-    # Graph for theoretical rho, measured rho and utilization
-    actual_rhos = lambdas * np.array(measures_by_rho['mean_service'])
-
-    fig_hyp, ax_rho = plt.subplots()
-    fig_hyp.canvas.set_window_title('exponential-checking-hypotheses')
-
-    ax_rho.set(xlabel=r'$\rho$ (expected)', ylabel='value', title=r'$\rho$ by its expected value ($\mu = 1$)')
-    ax_rho.plot(rhos, rhos, label=r'expected $\rho$')
-    ax_rho.step(rhos, actual_rhos, label=r'actual $\rho = \lambda \mathbb{E}[B]$')
-    ax_rho.step(rhos, measures_by_rho['utilization'], label=fr'$\overline{"{x}"}$ ($\tau = {TAU}$)')
-
-    # graphing results for mu = 1
-    fig_sojourn, ax_sojourn = plt.subplots()
-    fig_sojourn.canvas.set_window_title('exponential-sojourn')
-    ax_sojourn.step(rhos, measures_by_rho['mean_sojourn'], label=r'measured ($\mu = 1$)')
-    ax_sojourn.plot(rhos, expected_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_sojourn.fill_between(rhos, measures_by_rho['lower_ci_mean_sojourn'], measures_by_rho['higher_ci_mean_sojourn'],
-                            alpha=0.4)
-    ax_sojourn.set(xlabel=r'$\rho$', ylabel='duration', title=r'$\mathbb{E}[S]$ by $\rho$')
-
-    fig_setup, ax_p_setup = plt.subplots()
-    fig_setup.canvas.set_window_title('exponential-setup')
-    ax_p_setup.step(rhos, measures_by_rho['p_setup'], label=r'measured ($\mu = 1$)')
-    ax_p_setup.plot(rhos, expected_p_setup(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_p_setup.fill_between(rhos, measures_by_rho['lower_ci_p_setup'], measures_by_rho['higher_ci_p_setup'], alpha=0.4)
-    ax_p_setup.set(xlabel=r'$\rho$', ylabel='$P_{SETUP}$', title=r'$P_{SETUP}$ by $\rho$')
-
-    fig_off, ax_p_off = plt.subplots()
-    fig_off.canvas.set_window_title('exponential-off')
-    ax_p_off.step(rhos, measures_by_rho['p_off'], label=r'measured ($\mu = 1$)')
-    ax_p_off.plot(rhos, expected_p_off(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_p_off.fill_between(rhos, measures_by_rho['lower_ci_p_off'], measures_by_rho['higher_ci_p_off'], alpha=0.4)
-    ax_p_off.set(xlabel=r'$\rho$', ylabel='$P_{OFF}$', title=r'$P_{OFF}$ by $\rho$')
+        append_measures(measures_by_rho_mu, mean_measures(measures_same_rho, ref))
+    measures_by_rho_mu = {k: np.array(v) for k, v in measures_by_rho_mu.items()}
 
     # Same simulations but smaller TAU to prove utilization will diverge
     small_tau = TAU // TAU_FACTOR
-    measures_by_rho = defaultdict(list)
+    measures_by_rho_tau = defaultdict(list)
     for _lambda in lambdas:
         measures_same_rho = defaultdict(list)
 
@@ -113,15 +71,14 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
             if _ % TAU_FACTOR == 0:
                 progress_bar.update(1)
 
-        append_measures(measures_by_rho, mean_measures(measures_same_rho))
-
-    ax_rho.step(rhos, measures_by_rho['utilization'], label=fr'$\overline{"{x}"}$ ($\tau = {small_tau}$)')
+        append_measures(measures_by_rho_tau, mean_measures(measures_same_rho))
+    measures_by_rho_tau = {k: np.array(v) for k, v in measures_by_rho_tau.items()}
 
     # second parameters set, lambda = 1, mu in [1/0.95, 1/0.05] and theta = 0.4
     _lambda = 1
     mus = _lambda / rhos
     theta = 0.4
-    measures_by_rho = defaultdict(list)
+    measures_by_rho_lam = defaultdict(list)
     for mu in mus:
         measures_same_rho = defaultdict(list)
 
@@ -136,41 +93,148 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
             append_measures(measures_same_rho, measures)
             progress_bar.update(1)
 
-        append_measures(measures_by_rho, mean_measures(measures_same_rho, ref))
+        append_measures(measures_by_rho_lam, mean_measures(measures_same_rho, ref))
+    measures_by_rho_lam = {k: np.array(v) for k, v in measures_by_rho_lam.items()}
 
-    # Checking hypotheses, lambda = 1
-    messages.append('# Checking hypotheses, lambda = 1')
-    sojourn_test = sum(measures_by_rho['test_mean_sojourn']) / len(measures_by_rho['test_mean_sojourn'])
-    messages.append('test for sojourn_time : %s' % sojourn_test)
-    p_setup_test = sum(measures_by_rho['test_p_setup']) / len(measures_by_rho['test_p_setup'])
-    messages.append('test for p_setup : %s' % p_setup_test)
-    p_off_test = sum(measures_by_rho['test_p_off']) / len(measures_by_rho['test_p_off'])
-    messages.append('test for p_off : %s' % p_off_test)
+    # Graph for theoretical rho, measured rho, utilization and small tau utilization
+    actual_rhos = lambdas * np.array(measures_by_rho_mu['mean_service'])
 
-    # graphing results for lambda = 1
-    ax_sojourn.step(rhos, measures_by_rho['mean_sojourn'], label=r'measured ($\lambda = 1$)')
+    fig_hyp, ax_rho = plt.subplots()
+    fig_hyp.canvas.set_window_title('exp-rho-rho-x')
+
+    ax_rho.set(xlabel=r'$\rho$ (expected)', ylabel='value', title=r'$\rho$ by its expected value ($\mu = 1$)')
+    ax_rho.plot(rhos, rhos, label=r'expected $\rho$')
+    ax_rho.step(rhos, actual_rhos, label=r'actual $\rho = \lambda \mathbb{E}[B]$')
+    ax_rho.step(rhos, measures_by_rho_mu['utilization'], label=fr'$\overline{"{x}"}$ ($\tau = {TAU}$)')
+    ax_rho.step(rhos, measures_by_rho_tau['utilization'], label=fr'$\overline{"{x}"}$ ($\tau = {small_tau}$)')
+    ax_rho.legend(loc='best')
+
+    # graph sojourn time
+    fig_sojourn, ax_sojourn = plt.subplots()
+    fig_sojourn.canvas.set_window_title('exp-mean_sojourn')
+
+    ax_sojourn.scatter(rhos, measures_by_rho_mu['mean_sojourn'], label=r'measured ($\mu = 1$)')
+    ax_sojourn.scatter(rhos, measures_by_rho_lam['mean_sojourn'], label=r'measured ($\lambda = 1$)')
+    ax_sojourn.plot(rhos, expected_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical ($\mu = 1$)')
     ax_sojourn.plot(rhos, expected_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical ($\lambda = 1$)')
     ax_sojourn.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$')
-    ax_sojourn.fill_between(rhos, measures_by_rho['lower_ci_mean_sojourn'], measures_by_rho['higher_ci_mean_sojourn'],
-                            alpha=0.4)
-
-    ax_p_setup.step(rhos, measures_by_rho['p_setup'], label=r'measured ($\lambda = 1$)')
-    ax_p_setup.plot(rhos, expected_p_setup(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
-    ax_p_setup.fill_between(rhos, measures_by_rho['lower_ci_p_setup'], measures_by_rho['higher_ci_p_setup'], alpha=0.4)
-    ax_p_setup.set(xlabel=r'$\rho$', ylabel='$P_{SETUP}$', title=r'$P_{SETUP}$ by $\rho$')
-
-    ax_p_off.step(rhos, measures_by_rho['p_off'], label=r'measured ($\lambda = 1$)')
-    ax_p_off.plot(rhos, expected_p_off(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
-    ax_p_off.fill_between(rhos, measures_by_rho['lower_ci_p_off'], measures_by_rho['higher_ci_p_off'], alpha=0.4)
-    ax_p_off.set(xlabel=r'$\rho$', ylabel='$P_{OFF}$', title=r'$P_{OFF}$ by $\rho$')
-
-    for msg in messages:
-        print(msg)
-
-    ax_rho.legend(loc='best')
     ax_sojourn.legend(loc='best')
+
+    # graph sojourn H_0 and confidence interval, mu = 1
+    fig_soj_mu_test, ax_soj_mu_test = plt.subplots()
+    fig_soj_mu_test.canvas.set_window_title('exp-mean_sojourn-test-mu')
+
+    good = measures_by_rho_mu['test_mean_sojourn']
+    bad = np.invert(measures_by_rho_mu['test_mean_sojourn'])
+
+    ax_soj_mu_test.plot(rhos, expected_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical')
+    ax_soj_mu_test.fill_between(rhos, measures_by_rho_mu['lower_ci_mean_sojourn'],
+                                measures_by_rho_mu['higher_ci_mean_sojourn'], alpha=0.4, label=r'CI')
+    ax_soj_mu_test.scatter(rhos[good], measures_by_rho_mu['mean_sojourn'][good], label='$H_0$')
+    ax_soj_mu_test.scatter(rhos[bad], measures_by_rho_mu['mean_sojourn'][bad], label='$H_1$')
+    ax_soj_mu_test.legend(loc='best')
+    ax_soj_mu_test.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$ (tests for $\mu = 1$)')
+
+    # graph sojourn H_0 and confidence interval, lambda = 1
+    fig_soj_lam_test, ax_soj_lam_test = plt.subplots()
+    fig_soj_lam_test.canvas.set_window_title('exp-mean_sojourn-test-lam')
+
+    good = measures_by_rho_lam['test_mean_sojourn']
+    bad = np.invert(measures_by_rho_lam['test_mean_sojourn'])
+
+    ax_soj_lam_test.plot(rhos, expected_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical')
+    ax_soj_lam_test.scatter(rhos[good], measures_by_rho_lam['mean_sojourn'][good], label='$H_0$')
+    ax_soj_lam_test.scatter(rhos[bad], measures_by_rho_lam['mean_sojourn'][bad], label='$H_1$')
+    ax_soj_lam_test.fill_between(rhos, measures_by_rho_lam['lower_ci_mean_sojourn'],
+                                 measures_by_rho_lam['higher_ci_mean_sojourn'], alpha=0.4, label='CI')
+    ax_soj_lam_test.legend(loc='best')
+    ax_soj_lam_test.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$ (tests for $\lambda = 1$)')
+
+    # graphing p_setup
+    fig_setup, ax_p_setup = plt.subplots()
+    fig_setup.canvas.set_window_title('exp-p_setup')
+    ax_p_setup.plot(rhos, expected_p_setup(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
+    ax_p_setup.plot(rhos, expected_p_setup(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_p_setup.scatter(rhos, measures_by_rho_mu['p_setup'], label=r'measured ($\mu = 1$)')
+    ax_p_setup.scatter(rhos, measures_by_rho_lam['p_setup'], label=r'measured ($\lambda = 1$)')
     ax_p_setup.legend(loc='best')
+    ax_p_setup.set(xlabel=r'$\rho$', ylabel='probability', title=r'$P_{SETUP}$ by $\rho$')
+
+    # graph p_setup test mu = 1
+    fig_setup_test_mu, ax_p_setup_test_mu = plt.subplots()
+    fig_setup_test_mu.canvas.set_window_title('exp-p_setup-test-mu')
+
+    good = measures_by_rho_mu['test_p_setup']
+    bad = np.invert(measures_by_rho_mu['test_p_setup'])
+
+    ax_p_setup_test_mu.plot(rhos, expected_p_setup(lambdas, rhos, theta), label=r'theoretical')
+    ax_p_setup_test_mu.scatter(rhos[good], measures_by_rho_mu['p_setup'][good], label=r'$H_0$')
+    ax_p_setup_test_mu.scatter(rhos[bad], measures_by_rho_mu['p_setup'][bad], label=r'$H_1$')
+    ax_p_setup_test_mu.fill_between(rhos, measures_by_rho_mu['lower_ci_p_setup'],
+                                    measures_by_rho_mu['higher_ci_p_setup'],
+                                    alpha=0.4, label='CI')
+    ax_p_setup_test_mu.set(xlabel=r'$\rho$', ylabel='probability', title=r'$P_{SETUP}$ by $\rho$ (tests for $\mu = 1$)')
+    ax_p_setup_test_mu.legend(loc='best')
+
+    # graph p_setup test lam = 1
+    fig_setup_test_lam, ax_p_setup_test_lam = plt.subplots()
+    fig_setup_test_lam.canvas.set_window_title('exp-p_setup-test-lam')
+
+    good = measures_by_rho_lam['test_p_setup']
+    bad = np.invert(measures_by_rho_lam['test_p_setup'])
+
+    ax_p_setup_test_lam.plot(rhos, expected_p_setup(_lambda, rhos, theta), label=r'theoretical')
+    ax_p_setup_test_lam.scatter(rhos[good], measures_by_rho_lam['p_setup'][good], label=r'$H_0$')
+    ax_p_setup_test_lam.scatter(rhos[bad], measures_by_rho_lam['p_setup'][bad], label=r'$H_1$')
+    ax_p_setup_test_lam.fill_between(rhos, measures_by_rho_lam['lower_ci_p_setup'],
+                                     measures_by_rho_lam['higher_ci_p_setup'],
+                                     alpha=0.4, label='CI')
+    ax_p_setup_test_lam.set(xlabel=r'$\rho$', ylabel='probability',
+                            title=r'$P_{SETUP}$ by $\rho$ (tests for $\lambda = 1$)')
+    ax_p_setup_test_lam.legend(loc='best')
+
+    # graphing p_off
+    fig_off, ax_p_off = plt.subplots()
+    fig_off.canvas.set_window_title('exp-p_off')
+    ax_p_off.plot(rhos, expected_p_off(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
+    ax_p_off.plot(rhos, expected_p_off(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_p_off.scatter(rhos, measures_by_rho_mu['p_off'], label=r'measured ($\mu = 1$)')
+    ax_p_off.scatter(rhos, measures_by_rho_lam['p_off'], label=r'measured ($\lambda = 1$)')
     ax_p_off.legend(loc='best')
+    ax_p_off.set(xlabel=r'$\rho$', ylabel='probability', title=r'$P_{OFF}$ by $\rho$')
+
+    # graph p_off test mu = 1
+    fig_off_test_mu, ax_p_off_test_mu = plt.subplots()
+    fig_off_test_mu.canvas.set_window_title('exp-p_off-test-mu')
+
+    good = measures_by_rho_mu['test_p_off']
+    bad = np.invert(measures_by_rho_mu['test_p_off'])
+
+    ax_p_off_test_mu.plot(rhos, expected_p_off(lambdas, rhos, theta), label=r'theoretical')
+    ax_p_off_test_mu.scatter(rhos[good], measures_by_rho_mu['p_off'][good], label=r'$H_0$')
+    ax_p_off_test_mu.scatter(rhos[bad], measures_by_rho_mu['p_off'][bad], label=r'$H_1$')
+    ax_p_off_test_mu.fill_between(rhos, measures_by_rho_mu['lower_ci_p_off'],
+                                  measures_by_rho_mu['higher_ci_p_off'],
+                                  alpha=0.4, label='CI')
+    ax_p_off_test_mu.set(xlabel=r'$\rho$', ylabel='probability', title=r'$P_{OFF}$ by $\rho$ (tests for $\mu = 1$)')
+    ax_p_off_test_mu.legend(loc='best')
+
+    # graph p_off test lam = 1
+    fig_off_test_lam, ax_p_off_test_lam = plt.subplots()
+    fig_off_test_lam.canvas.set_window_title('exp-p_off-test-lam')
+
+    good = measures_by_rho_lam['test_p_off']
+    bad = np.invert(measures_by_rho_lam['test_p_off'])
+
+    ax_p_off_test_lam.plot(rhos, expected_p_off(_lambda, rhos, theta), label=r'theoretical')
+    ax_p_off_test_lam.scatter(rhos[good], measures_by_rho_lam['p_off'][good], label=r'$H_0$')
+    ax_p_off_test_lam.scatter(rhos[bad], measures_by_rho_lam['p_off'][bad], label=r'$H_1$')
+    ax_p_off_test_lam.fill_between(rhos, measures_by_rho_lam['lower_ci_p_off'],
+                                   measures_by_rho_lam['higher_ci_p_off'],
+                                   alpha=0.4, label='CI')
+    ax_p_off_test_lam.set(xlabel=r'$\rho$', ylabel='probability',
+                          title=r'$P_{OFF}$ by $\rho$ (tests for $\lambda = 1$)')
+    ax_p_off_test_lam.legend(loc='best')
 
 
 def main():
