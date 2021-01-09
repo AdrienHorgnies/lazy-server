@@ -5,6 +5,7 @@ system parameter.
 from typing import Dict, List
 
 import numpy as np
+import scipy.stats as st
 from numpy import ndarray
 
 
@@ -16,14 +17,14 @@ def compute_measures(arrivals: ndarray, services: ndarray, completions: ndarray,
     :param services: the durations of the services
     :param completions: the times of completion of services
     :param states: the states of the server at arrivals
-    :return: a dictionary containing the service_mean, sojourn_mean, p_off, p_setup and p_on
+    :return: a dictionary containing the mean_service, mean_sojourn, p_off, p_setup and p_on
     """
     job_count = len(arrivals)
 
     if len(arrivals) == 0:
         return {
-            'service_mean': 0,
-            'sojourn_mean': 0,
+            'mean_service': 0,
+            'mean_sojourn': 0,
             'p_off': 1,
             'p_setup': 0,
             'p_on': 0,
@@ -31,8 +32,8 @@ def compute_measures(arrivals: ndarray, services: ndarray, completions: ndarray,
         }
 
     return {
-        'service_mean': services.mean(),
-        'sojourn_mean': (completions - arrivals).mean(),
+        'mean_service': services.mean(),
+        'mean_sojourn': (completions - arrivals).mean(),
         'p_off': (states == 'off').sum() / job_count,
         'p_setup': (states == 'setup').sum() / job_count,
         'p_on': (states == 'on').sum() / job_count,
@@ -52,21 +53,27 @@ def append_measures(base: Dict[str, List[float]], extension: Dict[str, float]):
         base[measure].append(value)
 
 
-def mean_measures(measures_list: Dict[str, List[float]]) -> Dict[str, float]:
+def mean_measures(measures_list: Dict[str, List[float]], ref=None) -> Dict[str, float]:
     """
-    Aggregate the list of values of each measure into its mean
+    Aggregate the list of values of each measure into its mean and compute the 95% confidence interval
 
+    :param ref: a dictionary with reference measure to test hypothesis sample match reference using t-student
     :param measures_list: a dictionary containing a list of measures for each type of measure
     :return: a dictionary containing the mean of all measures for each type of measure
     """
-    return {
-        measure: np.mean(values)
-        for measure, values
-        in measures_list.items()
-    }
+    measures = dict()
+    for key, values in measures_list.items():
+        measures[key] = np.mean(values)
+        if ref and key in ref:
+            measures['lower_ci_' + key], measures['higher_ci_' + key] = confidence(values, measures[key])
+            lt_pvalue = st.ttest_1samp(values, 0.95 * ref[key], alternative='less').pvalue
+            gt_pvalue = st.ttest_1samp(values, 1.05 * ref[key], alternative='greater').pvalue
+            measures['test_' + key] = lt_pvalue > 0.05 and gt_pvalue > 0.05
+
+    return measures
 
 
-def mean_sojourn_time(_lambda, mu, rho, theta):
+def expected_sojourn_time(_lambda, mu, rho, theta):
     """
     Compute the theoretical mean sojourn time
 
@@ -79,7 +86,7 @@ def mean_sojourn_time(_lambda, mu, rho, theta):
     return 1 / mu / (1 - rho) + 1 / theta
 
 
-def compute_p_setup(_lambda, rho, theta):
+def expected_p_setup(_lambda, rho, theta):
     """
     Compute the theoretical value of P_SETUP
 
@@ -91,7 +98,7 @@ def compute_p_setup(_lambda, rho, theta):
     return (1 - rho) / (theta / _lambda + 1)
 
 
-def compute_p_off(_lambda, rho, theta):
+def expected_p_off(_lambda, rho, theta):
     """
     Compute the theoretical value of P_OFF
 
@@ -101,3 +108,13 @@ def compute_p_off(_lambda, rho, theta):
     :return: theoretical value of P_SETUP
     """
     return (1 - rho) / (1 + _lambda / theta)
+
+
+def confidence(sample, mean=None):
+    """
+    Compute the confidence interval for the provided sample using t-student method
+    :param sample: the sample
+    :param mean: the mean of the sample
+    :return: the lower bound and higher bound of the confidence interval
+    """
+    return st.t.interval(0.95, len(sample)-1, loc=mean or np.mean(sample), scale=st.sem(sample))
