@@ -37,7 +37,7 @@ def compute_measures(arrivals: ndarray, services: ndarray, completions: ndarray,
         'p_off': (states == 'off').sum() / job_count,
         'p_setup': (states == 'setup').sum() / job_count,
         'p_on': (states == 'on').sum() / job_count,
-        'utilization': services.sum() / completions[-1],
+        'utilization': services.sum() / (completions[-1] - arrivals[0]),
     }
 
 
@@ -66,9 +66,8 @@ def mean_measures(measures_list: Dict[str, List[float]], ref=None) -> Dict[str, 
         measures[key] = np.mean(values)
         if ref and key in ref:
             measures['lower_ci_' + key], measures['higher_ci_' + key] = confidence(values, measures[key])
-            lt_pvalue = st.ttest_1samp(values, 0.95 * ref[key], alternative='less').pvalue
-            gt_pvalue = st.ttest_1samp(values, 1.05 * ref[key], alternative='greater').pvalue
-            measures['test_' + key] = lt_pvalue > 0.05 and gt_pvalue > 0.05
+            test = st.ttest_1samp(values, ref[key]).pvalue > 0.05
+            measures['test_' + key] = test
 
     return measures
 

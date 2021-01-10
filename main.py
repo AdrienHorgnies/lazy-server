@@ -7,7 +7,6 @@ import numpy as np
 from numpy.random import SeedSequence, SFC64, Generator
 from typing import List, Callable
 from collections import defaultdict
-from scipy.stats import ttest_1samp
 
 from measures import compute_measures, append_measures, mean_measures, expected_sojourn_time, expected_p_off, \
     expected_p_setup
@@ -17,9 +16,9 @@ from tqdm import tqdm
 # the number of repetitions for each value of rho
 N_SIM = 1000
 # the time at which the simulation stops
-TAU = 1000
+TAU = 2000
 # the number of values tested for rho between 0.05 and 0.95
-STEPS = 50
+STEPS = 20
 # the factor by which the small tau test is smaller
 TAU_FACTOR = 10
 
@@ -100,6 +99,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
 
     fig_hyp, ax_rho = plt.subplots()
     fig_hyp.canvas.set_window_title('exp-rho-rho-x')
+    fig_hyp.set(label='exp-rho-rho-x')
 
     ax_rho.set(xlabel=r'$\rho$ (expected)', ylabel='value', title=r'$\rho$ by its expected value ($\mu = 1$)')
     ax_rho.plot(rhos, rhos, label=r'expected $\rho$')
@@ -111,6 +111,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph sojourn time
     fig_sojourn, ax_sojourn = plt.subplots()
     fig_sojourn.canvas.set_window_title('exp-mean_sojourn')
+    fig_sojourn.set(label='exp-mean_sojourn')
 
     ax_sojourn.scatter(rhos, measures_by_rho_mu['mean_sojourn'], label=r'measured ($\mu = 1$)')
     ax_sojourn.scatter(rhos, measures_by_rho_lam['mean_sojourn'], label=r'measured ($\lambda = 1$)')
@@ -122,21 +123,23 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph sojourn H_0 and confidence interval, mu = 1
     fig_soj_mu_test, ax_soj_mu_test = plt.subplots()
     fig_soj_mu_test.canvas.set_window_title('exp-mean_sojourn-test-mu')
+    fig_soj_mu_test.set(label='exp-mean_sojourn-test-mu')
 
     good = measures_by_rho_mu['test_mean_sojourn']
     bad = np.invert(good)
 
     ax_soj_mu_test.plot(rhos, expected_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical')
-    ax_soj_mu_test.fill_between(rhos, measures_by_rho_mu['lower_ci_mean_sojourn'],
-                                measures_by_rho_mu['higher_ci_mean_sojourn'], alpha=0.4, label=r'CI')
     ax_soj_mu_test.scatter(rhos[good], measures_by_rho_mu['mean_sojourn'][good], label='$H_0$')
     ax_soj_mu_test.scatter(rhos[bad], measures_by_rho_mu['mean_sojourn'][bad], label='$H_1$')
+    ax_soj_mu_test.fill_between(rhos, measures_by_rho_mu['lower_ci_mean_sojourn'],
+                                measures_by_rho_mu['higher_ci_mean_sojourn'], alpha=0.4, label=r'CI')
     ax_soj_mu_test.legend(loc='best')
     ax_soj_mu_test.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$ (tests for $\mu = 1$)')
 
     # graph sojourn H_0 and confidence interval, lambda = 1
     fig_soj_lam_test, ax_soj_lam_test = plt.subplots()
     fig_soj_lam_test.canvas.set_window_title('exp-mean_sojourn-test-lam')
+    fig_soj_lam_test.set(label='exp-mean_sojourn-test-lam')
 
     good = measures_by_rho_lam['test_mean_sojourn']
     bad = np.invert(good)
@@ -152,6 +155,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graphing p_setup
     fig_setup, ax_p_setup = plt.subplots()
     fig_setup.canvas.set_window_title('exp-p_setup')
+    fig_setup.set(label='exp-p_setup')
     ax_p_setup.plot(rhos, expected_p_setup(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
     ax_p_setup.plot(rhos, expected_p_setup(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
     ax_p_setup.scatter(rhos, measures_by_rho_mu['p_setup'], label=r'measured ($\mu = 1$)')
@@ -162,6 +166,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph p_setup test mu = 1
     fig_setup_test_mu, ax_p_setup_test_mu = plt.subplots()
     fig_setup_test_mu.canvas.set_window_title('exp-p_setup-test-mu')
+    fig_setup_test_mu.set(label='exp-p_setup-test-mu')
 
     good = measures_by_rho_mu['test_p_setup']
     bad = np.invert(good)
@@ -178,6 +183,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph p_setup test lam = 1
     fig_setup_test_lam, ax_p_setup_test_lam = plt.subplots()
     fig_setup_test_lam.canvas.set_window_title('exp-p_setup-test-lam')
+    fig_setup_test_lam.set(label='exp-p_setup-test-lam')
 
     good = measures_by_rho_lam['test_p_setup']
     bad = np.invert(good)
@@ -195,6 +201,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graphing p_off
     fig_off, ax_p_off = plt.subplots()
     fig_off.canvas.set_window_title('exp-p_off')
+    fig_off.set(label='exp-p_off')
     ax_p_off.plot(rhos, expected_p_off(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
     ax_p_off.plot(rhos, expected_p_off(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
     ax_p_off.scatter(rhos, measures_by_rho_mu['p_off'], label=r'measured ($\mu = 1$)')
@@ -205,6 +212,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph p_off test mu = 1
     fig_off_test_mu, ax_p_off_test_mu = plt.subplots()
     fig_off_test_mu.canvas.set_window_title('exp-p_off-test-mu')
+    fig_off_test_mu.set(label='exp-p_off-test-mu')
 
     good = measures_by_rho_mu['test_p_off']
     bad = np.invert(good)
@@ -221,6 +229,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     # graph p_off test lam = 1
     fig_off_test_lam, ax_p_off_test_lam = plt.subplots()
     fig_off_test_lam.canvas.set_window_title('exp-p_off-test-lam')
+    fig_off_test_lam.set(label='exp-p_off-test-lam')
 
     good = measures_by_rho_lam['test_p_off']
     bad = np.invert(good)
@@ -240,6 +249,7 @@ def main():
     description = 'Produce the different results presented in the project report. '
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('seed', nargs='?', type=int, help='seed to initialize the random generator')
+    parser.add_argument('--save-figures',  dest='save', action='store_true', help='Whether to save figures or not in ./out')
     args = parser.parse_args()
 
     if args.seed:
@@ -262,6 +272,11 @@ def main():
     get_exponential_results(spawn_generator)
 
     plt.tight_layout()
+    if args.save:
+        for label in plt.get_figlabels():
+            plt.figure(label).savefig('./out/' + label + '.png')
+        with open('./out/seed.txt', 'w+') as f:
+            f.write(str(seed_seq.entropy) + '\n')
     plt.show()
 
 
