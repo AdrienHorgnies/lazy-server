@@ -74,7 +74,15 @@ def simulation(get_inter_arrival: Callable, get_service_duration: Callable, get_
             else:
                 events['completion'] = float('inf')
 
-    return np.array(arrivals[:len(completions)]), np.array(services), np.array(completions), np.array(states)
+    arrivals = np.array(arrivals)
+    second_half_filter = arrivals > tau / 2
+
+    arrivals = arrivals[second_half_filter]
+    services = np.array(services)[second_half_filter]
+    completions = np.array(completions)[second_half_filter]
+    states = np.array(states)[second_half_filter]
+
+    return arrivals, services, completions, states
 
 
 def exponential_simulation(generators, _lambda, mu, theta, tau):
