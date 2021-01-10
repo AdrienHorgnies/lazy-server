@@ -15,11 +15,11 @@ from simulations import exponential_simulation
 from tqdm import tqdm
 
 # the number of repetitions for each value of rho
-N_SIM = 100
+N_SIM = 1000
 # the time at which the simulation stops
 TAU = 1000
 # the number of values tested for rho between 0.05 and 0.95
-STEPS = 20
+STEPS = 50
 # the factor by which the small tau test is smaller
 TAU_FACTOR = 10
 
@@ -33,7 +33,6 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     :return: None
     """
     progress_bar = tqdm(total=21 * STEPS * N_SIM // TAU_FACTOR)
-    messages = []
 
     # first parameters set, lambda in [0.05, 0.95], mu = 1 and theta = 0.4
     rhos = np.linspace(0.05, 0.95, STEPS)
@@ -125,7 +124,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_soj_mu_test.canvas.set_window_title('exp-mean_sojourn-test-mu')
 
     good = measures_by_rho_mu['test_mean_sojourn']
-    bad = np.invert(measures_by_rho_mu['test_mean_sojourn'])
+    bad = np.invert(good)
 
     ax_soj_mu_test.plot(rhos, expected_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical')
     ax_soj_mu_test.fill_between(rhos, measures_by_rho_mu['lower_ci_mean_sojourn'],
@@ -140,7 +139,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_soj_lam_test.canvas.set_window_title('exp-mean_sojourn-test-lam')
 
     good = measures_by_rho_lam['test_mean_sojourn']
-    bad = np.invert(measures_by_rho_lam['test_mean_sojourn'])
+    bad = np.invert(good)
 
     ax_soj_lam_test.plot(rhos, expected_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical')
     ax_soj_lam_test.scatter(rhos[good], measures_by_rho_lam['mean_sojourn'][good], label='$H_0$')
@@ -165,7 +164,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_setup_test_mu.canvas.set_window_title('exp-p_setup-test-mu')
 
     good = measures_by_rho_mu['test_p_setup']
-    bad = np.invert(measures_by_rho_mu['test_p_setup'])
+    bad = np.invert(good)
 
     ax_p_setup_test_mu.plot(rhos, expected_p_setup(lambdas, rhos, theta), label=r'theoretical')
     ax_p_setup_test_mu.scatter(rhos[good], measures_by_rho_mu['p_setup'][good], label=r'$H_0$')
@@ -181,7 +180,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_setup_test_lam.canvas.set_window_title('exp-p_setup-test-lam')
 
     good = measures_by_rho_lam['test_p_setup']
-    bad = np.invert(measures_by_rho_lam['test_p_setup'])
+    bad = np.invert(good)
 
     ax_p_setup_test_lam.plot(rhos, expected_p_setup(_lambda, rhos, theta), label=r'theoretical')
     ax_p_setup_test_lam.scatter(rhos[good], measures_by_rho_lam['p_setup'][good], label=r'$H_0$')
@@ -208,7 +207,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_off_test_mu.canvas.set_window_title('exp-p_off-test-mu')
 
     good = measures_by_rho_mu['test_p_off']
-    bad = np.invert(measures_by_rho_mu['test_p_off'])
+    bad = np.invert(good)
 
     ax_p_off_test_mu.plot(rhos, expected_p_off(lambdas, rhos, theta), label=r'theoretical')
     ax_p_off_test_mu.scatter(rhos[good], measures_by_rho_mu['p_off'][good], label=r'$H_0$')
@@ -224,7 +223,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]]):
     fig_off_test_lam.canvas.set_window_title('exp-p_off-test-lam')
 
     good = measures_by_rho_lam['test_p_off']
-    bad = np.invert(measures_by_rho_lam['test_p_off'])
+    bad = np.invert(good)
 
     ax_p_off_test_lam.plot(rhos, expected_p_off(_lambda, rhos, theta), label=r'theoretical')
     ax_p_off_test_lam.scatter(rhos[good], measures_by_rho_lam['p_off'][good], label=r'$H_0$')
