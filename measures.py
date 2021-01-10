@@ -113,9 +113,10 @@ def exp_p_off(_lambda, rho, theta):
 def erlang_sojourn_time(_lambda, n, b, rho, theta):
     e_b = n * b
     e_t = 1 / theta
-    r_b = 439.9690508961497 / (2 * e_b) # (np.random.gamma(n, b, 5 * 10**7) ** 2).mean()
-    # r_b = n * b ** 2 / (2 * e_b)
-    r_t = 0.07998225000392005 / (2 * e_t) # (np.random.exponential(theta, 5 * 10**7) ** 2).mean()
+    # E[B^2] = (np.random.gamma(n, b, 5 * 10**7) ** 2).mean()
+    r_b = 1.1000267388299316 / (2 * e_b)
+    # E[T^2] = (np.random.exponential(1 / theta, 5 * 10**7) ** 2).mean()
+    r_t = 50.00272701470681 / (2 * e_t)
     # r_t = theta ** 2 / (2 * e_t)
     wait = rho * r_b / (1 - rho) + \
            e_t / (1 + _lambda * e_t) + \

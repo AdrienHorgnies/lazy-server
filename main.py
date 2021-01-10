@@ -15,7 +15,7 @@ from simulations import exponential_simulation, erlang_simulation
 from tqdm import tqdm
 
 # the number of repetitions for each value of rho
-N_SIM = 1000
+N_SIM = 100
 # the time at which the simulation stops
 TAU = 2000
 # the number of values tested for rho between 0.05 and 0.95
@@ -258,7 +258,7 @@ def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progr
     """
     rhos = np.linspace(0.05, 0.95, STEPS)
     n = 10
-    b = 1.5
+    b = 0.1
     theta = 0.2
 
     measures_by_rho = defaultdict(list)
