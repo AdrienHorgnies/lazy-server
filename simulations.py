@@ -85,7 +85,7 @@ def simulation(get_inter_arrival: Callable, get_service_duration: Callable, get_
     return arrivals, services, completions, states
 
 
-def exponential_simulation(generators, _lambda, mu, theta, tau):
+def exponential_simulation(generators, _lambda, mu, theta, tau) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
     """
     Run a single simulation of the system, uses exponential variables for arrival, service and server setup
 
@@ -95,7 +95,8 @@ def exponential_simulation(generators, _lambda, mu, theta, tau):
     :param theta: server starting rate
     :param tau: the limit for the last event arrival
 
-    :return: a tuple of the arrival times, the service durations and the completion times
+    :return: a tuple of the arrival times, the service durations, the completion times and the state of the server at
+    client arrival
     """
 
     def get_inter_arrival():
@@ -110,13 +111,29 @@ def exponential_simulation(generators, _lambda, mu, theta, tau):
     return simulation(get_inter_arrival, get_service_duration, get_start_duration, tau)
 
 
-def erlang_simulation(generators: List[Generator], _lambda, mu, theta):
+def erlang_simulation(generators: List[Generator], _lambda, n, b, theta, tau)\
+        -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+    """
+    Run a single simulation of the system, uses exponential for arrival, erlang for service and exponential server setup
+
+    :param generators: a list of three generators
+    :param _lambda: arrival rate
+    :param n: the shape of the Erlang
+    :param b: the scale of the Erlang
+    :param theta: server starting rate
+    :param tau: the limit for the last event arrival
+
+    :return: a tuple of the arrival times, the service durations, the completion times and the state of the server at
+    client arrival
     """
 
-    :param generators:
-    :param _lambda: arrival rate
-    :param mu: service rate
-    :param theta: server starting rate
-    :return:
-    """
-    pass
+    def get_inter_arrival():
+        return generators[0].exponential(1 / _lambda)
+
+    def get_service_duration():
+        return generators[1].gamma(n, b)
+
+    def get_start_duration():
+        return generators[2].exponential(1 / theta)
+
+    return simulation(get_inter_arrival, get_service_duration, get_start_duration, tau)
