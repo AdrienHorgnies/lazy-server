@@ -68,11 +68,12 @@ def mean_measures(measures_list: Dict[str, List[float]], ref=None) -> Dict[str, 
             measures['lower_ci_' + key], measures['higher_ci_' + key] = confidence(values, measures[key])
             test = st.ttest_1samp(values, ref[key]).pvalue > 0.05
             measures['test_' + key] = test
+            measures['theo_' + key] = ref[key]
 
     return measures
 
 
-def expected_sojourn_time(_lambda, mu, rho, theta):
+def exp_sojourn_time(_lambda, mu, rho, theta):
     """
     Compute the theoretical mean sojourn time
 
@@ -85,7 +86,7 @@ def expected_sojourn_time(_lambda, mu, rho, theta):
     return 1 / mu / (1 - rho) + 1 / theta
 
 
-def expected_p_setup(_lambda, rho, theta):
+def exp_p_setup(_lambda, rho, theta):
     """
     Compute the theoretical value of P_SETUP
 
@@ -97,7 +98,7 @@ def expected_p_setup(_lambda, rho, theta):
     return (1 - rho) / (theta / _lambda + 1)
 
 
-def expected_p_off(_lambda, rho, theta):
+def exp_p_off(_lambda, rho, theta):
     """
     Compute the theoretical value of P_OFF
 
@@ -109,6 +110,28 @@ def expected_p_off(_lambda, rho, theta):
     return (1 - rho) / (1 + _lambda / theta)
 
 
+def erlang_sojourn_time(_lambda, n, b, rho, theta):
+    e_b = n * b
+    e_t = 1 / theta
+    r_b = 439.9690508961497 / (2 * e_b) # (np.random.gamma(n, b, 5 * 10**7) ** 2).mean()
+    # r_b = n * b ** 2 / (2 * e_b)
+    r_t = 0.07998225000392005 / (2 * e_t) # (np.random.exponential(theta, 5 * 10**7) ** 2).mean()
+    # r_t = theta ** 2 / (2 * e_t)
+    wait = rho * r_b / (1 - rho) + \
+           e_t / (1 + _lambda * e_t) + \
+           e_t * r_t / (1 / _lambda + e_t)
+    service = e_b
+    return wait + service
+
+
+def erlang_p_setup(_lambda, n, b, rho, theta):
+    return exp_p_setup(_lambda, rho, theta)
+
+
+def erlang_p_off(_lambda, n, b, rho, theta):
+    return exp_p_off(_lambda, rho, theta)
+
+
 def confidence(sample, mean=None):
     """
     Compute the confidence interval for the provided sample using t-student method
@@ -116,4 +139,4 @@ def confidence(sample, mean=None):
     :param mean: the mean of the sample
     :return: the lower bound and higher bound of the confidence interval
     """
-    return st.t.interval(0.95, len(sample)-1, loc=mean or np.mean(sample), scale=st.sem(sample))
+    return st.t.interval(0.95, len(sample) - 1, loc=mean or np.mean(sample), scale=st.sem(sample))
