@@ -247,19 +247,23 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     return measures_by_rho_mu
 
 
-def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progress_bar):
+def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progress_bar, exp_measures):
     """
     Run all the required simulations for the exponential service time model and display results in CLI or GUI depending
     on the nature of the result.
 
     :param spawn_generators: a function able to spawn generators
     :param progress_bar: a tqdm progress_bar to report progress
+    :param exp_measures: the result of the exponential simulation for comparison
     :return: measures by rho for mu = 1
     """
     rhos = np.linspace(0.05, 0.95, STEPS)
     n = 10
     b = 0.1
     theta = 0.2
+
+    all_esp_waits2 = []
+    punctual_rho = rhos[len(rhos) // 2]
 
     measures_by_rho = defaultdict(list)
     for rho in rhos:
@@ -275,14 +279,23 @@ def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progr
             results = erlang_simulation(spawn_generators(3), _lambda, n, b, theta, TAU)
             measures = compute_measures(*results)
             append_measures(measures_same_rho, measures)
+
+            if rho == punctual_rho:
+                waits = (results[2] - results[0])
+                esp_waits2 = (waits ** 2).mean()
+                all_esp_waits2.append(esp_waits2)
+
             progress_bar.update(1)
 
         append_measures(measures_by_rho, mean_measures(measures_same_rho, ref))
     measures_by_rho = {k: np.array(v) for k, v in measures_by_rho.items()}
 
-    make_figure(rhos, measures_by_rho, 'erlang', 'mean_sojourn', r'\mathbb{E}[S]', 'time')
-    make_figure(rhos, measures_by_rho, 'erlang', 'p_setup', 'P_{SETUP}', 'probability')
-    make_figure(rhos, measures_by_rho, 'erlang', 'p_off', 'P_{OFF}', 'probability')
+    esp_waits2 = np.mean(all_esp_waits2)
+    print(f"Measuring E[W^2] for rho = {punctual_rho} : {esp_waits2}")
+
+    make_figure(rhos, measures_by_rho, 'erlang', 'mean_sojourn', r'\mathbb{E}[S]', 'time', exp_measures)
+    make_figure(rhos, measures_by_rho, 'erlang', 'p_setup', 'P_{SETUP}', 'probability', exp_measures)
+    make_figure(rhos, measures_by_rho, 'erlang', 'p_off', 'P_{OFF}', 'probability', exp_measures)
 
 
 def main():
@@ -312,8 +325,8 @@ def main():
 
     progress_bar = tqdm(total=31 * STEPS * N_SIM // TAU_FACTOR)
 
-    # get_exponential_results(spawn_generators, progress_bar)
-    get_erlang_results(spawn_generators, progress_bar)
+    exp_measures = get_exponential_results(spawn_generators, progress_bar)
+    get_erlang_results(spawn_generators, progress_bar, exp_measures)
 
     plt.tight_layout()
     if args.save:
