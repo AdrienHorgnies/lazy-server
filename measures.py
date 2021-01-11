@@ -21,6 +21,7 @@ def compute_measures(arrivals: ndarray, services: ndarray, completions: ndarray,
     """
     job_count = len(arrivals)
 
+    # Required for absurd parameters I used to isolate some problems in my simulation
     if len(arrivals) == 0:
         return {
             'mean_service': 0,

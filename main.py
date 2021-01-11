@@ -304,6 +304,8 @@ def main():
     parser.add_argument('seed', nargs='?', type=int, help='seed to initialize the random generator')
     parser.add_argument('--save-figures', dest='save', action='store_true',
                         help='Whether to save figures or not in ./out')
+    parser.add_argument('--w2', action='store_true',
+                        help='Compute E[W^2] for rho = 0.5 INSTEAD of printing all the graphs')
     args = parser.parse_args()
 
     if args.seed:
@@ -323,18 +325,37 @@ def main():
         """
         return [Generator(SFC64(stream)) for stream in seed_seq.spawn(n)]
 
-    progress_bar = tqdm(total=31 * STEPS * N_SIM // TAU_FACTOR)
+    if not args.w2:
+        # GRAPHS
+        progress_bar = tqdm(total=31 * STEPS * N_SIM // TAU_FACTOR)
 
-    exp_measures = get_exponential_results(spawn_generators, progress_bar)
-    get_erlang_results(spawn_generators, progress_bar, exp_measures)
+        exp_measures = get_exponential_results(spawn_generators, progress_bar)
+        get_erlang_results(spawn_generators, progress_bar, exp_measures)
+        progress_bar.close()
 
-    plt.tight_layout()
-    if args.save:
-        for label in plt.get_figlabels():
-            plt.figure(label).savefig('./out/' + label + '.png')
-        with open('./out/seed.txt', 'w+') as f:
-            f.write(str(seed_seq.entropy) + '\n')
-    plt.show()
+        plt.tight_layout()
+        if args.save:
+            for label in plt.get_figlabels():
+                plt.figure(label).savefig('./out/' + label + '.png')
+            with open('./out/seed.txt', 'w+') as f:
+                f.write(str(seed_seq.entropy) + '\n')
+        plt.show()
+    else:
+        # E[W^2]
+        progress_bar = tqdm(total=10000)
+
+        w2_means = []
+        for _ in range(10000):
+            arrivals, services, completions, states = erlang_simulation(spawn_generators(3), 0.5, 10, 0.1, 0.2, 20000)
+            waits = completions - arrivals
+            w2 = waits ** 2
+            w2_mean = w2.mean()
+            w2_means.append(w2_mean)
+            progress_bar.update(1)
+        w2_mean = np.array(w2_means).mean()
+
+        progress_bar.close()
+        print(f'E[W^2] for rho = 0.5 : {w2_mean}')
 
 
 if __name__ == '__main__':
