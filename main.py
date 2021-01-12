@@ -1,5 +1,5 @@
 """
-Orchestrate the simulations and display the result in a comprehensive way
+Orchestrate the simulations and generate the figures presenting the results
 """
 import argparse
 import matplotlib.pyplot as plt
@@ -16,39 +16,40 @@ from tqdm import tqdm
 
 # the number of repetitions for each value of rho
 N_SIM = 100
-# the time at which the simulation stops
+# the time at which the simulation stops accepting arrivals
 TAU = 2000
 # the number of values tested for rho between 0.05 and 0.95
 STEPS = 20
-# the factor by which the small tau test is smaller
+# In a scenario we simulate the system with a smaller tau. This gives the ratio.
 TAU_FACTOR = 10
+# the setup rate
+THETA = 0.4
 
 
 def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], progress_bar):
     """
-    Run all the required simulations for the exponential service time model and display results in CLI or GUI depending
-    on the nature of the result.
+    Run all the required simulations for the exponential service time model and generate the figures
 
     :param spawn_generators: a function able to spawn generators
     :param progress_bar: a tqdm progress_bar to report progress
     :return: measures by rho for mu = 1
     """
-    # first parameters set, lambda in [0.05, 0.95], mu = 1 and theta = 0.4
+    # first parameters set, lambda in [0.05, 0.95], mu = 1 and THETA = 0.4
     rhos = np.linspace(0.05, 0.95, STEPS)
     mu = 1
     lambdas = mu * rhos
-    theta = 0.4
+
     measures_by_rho_mu = defaultdict(list)
     for _lambda in lambdas:
         measures_same_rho = defaultdict(list)
 
         ref = {
-            "mean_sojourn": exp_sojourn_time(_lambda, mu, _lambda / mu, theta),
-            "p_setup": exp_p_setup(_lambda, _lambda / mu, theta),
-            "p_off": exp_p_off(_lambda, _lambda / mu, theta)
+            "mean_sojourn": exp_sojourn_time(_lambda, mu, _lambda / mu, THETA),
+            "p_setup": exp_p_setup(_lambda, _lambda / mu, THETA),
+            "p_off": exp_p_off(_lambda, _lambda / mu, THETA)
         }
         for _ in range(N_SIM):
-            results = exponential_simulation(spawn_generators(3), _lambda, mu, theta, TAU)
+            results = exponential_simulation(spawn_generators(3), _lambda, mu, THETA, TAU)
             measures = compute_measures(*results)
             append_measures(measures_same_rho, measures)
             progress_bar.update(1)
@@ -63,7 +64,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
         measures_same_rho = defaultdict(list)
 
         for _ in range(N_SIM):
-            results = exponential_simulation(spawn_generators(3), _lambda, mu, theta, small_tau)
+            results = exponential_simulation(spawn_generators(3), _lambda, mu, THETA, small_tau)
             measures = compute_measures(*results)
             append_measures(measures_same_rho, measures)
             if _ % TAU_FACTOR == 0:
@@ -72,21 +73,20 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
         append_measures(measures_by_rho_tau, mean_measures(measures_same_rho))
     measures_by_rho_tau = {k: np.array(v) for k, v in measures_by_rho_tau.items()}
 
-    # second parameters set, lambda = 1, mu in [1/0.95, 1/0.05] and theta = 0.4
+    # second parameters set, lambda = 1, mu in [1/0.95, 1/0.05] and THETA = 0.4
     _lambda = 1
     mus = _lambda / rhos
-    theta = 0.4
     measures_by_rho_lam = defaultdict(list)
     for mu in mus:
         measures_same_rho = defaultdict(list)
 
         ref = {
-            "mean_sojourn": exp_sojourn_time(_lambda, mu, _lambda / mu, theta),
-            "p_setup": exp_p_setup(_lambda, _lambda / mu, theta),
-            "p_off": exp_p_off(_lambda, _lambda / mu, theta)
+            "mean_sojourn": exp_sojourn_time(_lambda, mu, _lambda / mu, THETA),
+            "p_setup": exp_p_setup(_lambda, _lambda / mu, THETA),
+            "p_off": exp_p_off(_lambda, _lambda / mu, THETA)
         }
         for _ in range(N_SIM):
-            results = exponential_simulation(spawn_generators(3), _lambda, mu, theta, TAU)
+            results = exponential_simulation(spawn_generators(3), _lambda, mu, THETA, TAU)
             measures = compute_measures(*results)
             append_measures(measures_same_rho, measures)
             progress_bar.update(1)
@@ -115,8 +115,8 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
 
     ax_sojourn.scatter(rhos, measures_by_rho_mu['mean_sojourn'], label=r'measured ($\mu = 1$)')
     ax_sojourn.scatter(rhos, measures_by_rho_lam['mean_sojourn'], label=r'measured ($\lambda = 1$)')
-    ax_sojourn.plot(rhos, exp_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_sojourn.plot(rhos, exp_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_sojourn.plot(rhos, exp_sojourn_time(lambdas, mu, rhos, THETA), label=r'theoretical ($\mu = 1$)')
+    ax_sojourn.plot(rhos, exp_sojourn_time(_lambda, mus, rhos, THETA), label=r'theoretical ($\lambda = 1$)')
     ax_sojourn.set(xlabel=r'$\rho$', ylabel='time', title=r'$\mathbb{E}[S]$ by $\rho$')
     ax_sojourn.legend(loc='best')
 
@@ -128,7 +128,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_mu['test_mean_sojourn']
     bad = np.invert(good)
 
-    ax_soj_mu_test.plot(rhos, exp_sojourn_time(lambdas, mu, rhos, theta), label=r'theoretical')
+    ax_soj_mu_test.plot(rhos, exp_sojourn_time(lambdas, mu, rhos, THETA), label=r'theoretical')
     ax_soj_mu_test.scatter(rhos[good], measures_by_rho_mu['mean_sojourn'][good], label='$H_0$')
     ax_soj_mu_test.scatter(rhos[bad], measures_by_rho_mu['mean_sojourn'][bad], label='$H_1$')
     ax_soj_mu_test.fill_between(rhos, measures_by_rho_mu['lower_ci_mean_sojourn'],
@@ -144,7 +144,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_lam['test_mean_sojourn']
     bad = np.invert(good)
 
-    ax_soj_lam_test.plot(rhos, exp_sojourn_time(_lambda, mus, rhos, theta), label=r'theoretical')
+    ax_soj_lam_test.plot(rhos, exp_sojourn_time(_lambda, mus, rhos, THETA), label=r'theoretical')
     ax_soj_lam_test.scatter(rhos[good], measures_by_rho_lam['mean_sojourn'][good], label='$H_0$')
     ax_soj_lam_test.scatter(rhos[bad], measures_by_rho_lam['mean_sojourn'][bad], label='$H_1$')
     ax_soj_lam_test.fill_between(rhos, measures_by_rho_lam['lower_ci_mean_sojourn'],
@@ -156,8 +156,8 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     fig_setup, ax_p_setup = plt.subplots()
     fig_setup.canvas.set_window_title('exp-p_setup')
     fig_setup.set(label='exp-p_setup')
-    ax_p_setup.plot(rhos, exp_p_setup(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_p_setup.plot(rhos, exp_p_setup(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_p_setup.plot(rhos, exp_p_setup(lambdas, rhos, THETA), label=r'theoretical ($\mu = 1$)')
+    ax_p_setup.plot(rhos, exp_p_setup(_lambda, rhos, THETA), label=r'theoretical ($\lambda = 1$)')
     ax_p_setup.scatter(rhos, measures_by_rho_mu['p_setup'], label=r'measured ($\mu = 1$)')
     ax_p_setup.scatter(rhos, measures_by_rho_lam['p_setup'], label=r'measured ($\lambda = 1$)')
     ax_p_setup.legend(loc='best')
@@ -171,7 +171,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_mu['test_p_setup']
     bad = np.invert(good)
 
-    ax_p_setup_test_mu.plot(rhos, exp_p_setup(lambdas, rhos, theta), label=r'theoretical')
+    ax_p_setup_test_mu.plot(rhos, exp_p_setup(lambdas, rhos, THETA), label=r'theoretical')
     ax_p_setup_test_mu.scatter(rhos[good], measures_by_rho_mu['p_setup'][good], label=r'$H_0$')
     ax_p_setup_test_mu.scatter(rhos[bad], measures_by_rho_mu['p_setup'][bad], label=r'$H_1$')
     ax_p_setup_test_mu.fill_between(rhos, measures_by_rho_mu['lower_ci_p_setup'],
@@ -188,7 +188,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_lam['test_p_setup']
     bad = np.invert(good)
 
-    ax_p_setup_test_lam.plot(rhos, exp_p_setup(_lambda, rhos, theta), label=r'theoretical')
+    ax_p_setup_test_lam.plot(rhos, exp_p_setup(_lambda, rhos, THETA), label=r'theoretical')
     ax_p_setup_test_lam.scatter(rhos[good], measures_by_rho_lam['p_setup'][good], label=r'$H_0$')
     ax_p_setup_test_lam.scatter(rhos[bad], measures_by_rho_lam['p_setup'][bad], label=r'$H_1$')
     ax_p_setup_test_lam.fill_between(rhos, measures_by_rho_lam['lower_ci_p_setup'],
@@ -202,8 +202,8 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     fig_off, ax_p_off = plt.subplots()
     fig_off.canvas.set_window_title('exp-p_off')
     fig_off.set(label='exp-p_off')
-    ax_p_off.plot(rhos, exp_p_off(lambdas, rhos, theta), label=r'theoretical ($\mu = 1$)')
-    ax_p_off.plot(rhos, exp_p_off(_lambda, rhos, theta), label=r'theoretical ($\lambda = 1$)')
+    ax_p_off.plot(rhos, exp_p_off(lambdas, rhos, THETA), label=r'theoretical ($\mu = 1$)')
+    ax_p_off.plot(rhos, exp_p_off(_lambda, rhos, THETA), label=r'theoretical ($\lambda = 1$)')
     ax_p_off.scatter(rhos, measures_by_rho_mu['p_off'], label=r'measured ($\mu = 1$)')
     ax_p_off.scatter(rhos, measures_by_rho_lam['p_off'], label=r'measured ($\lambda = 1$)')
     ax_p_off.legend(loc='best')
@@ -217,7 +217,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_mu['test_p_off']
     bad = np.invert(good)
 
-    ax_p_off_test_mu.plot(rhos, exp_p_off(lambdas, rhos, theta), label=r'theoretical')
+    ax_p_off_test_mu.plot(rhos, exp_p_off(lambdas, rhos, THETA), label=r'theoretical')
     ax_p_off_test_mu.scatter(rhos[good], measures_by_rho_mu['p_off'][good], label=r'$H_0$')
     ax_p_off_test_mu.scatter(rhos[bad], measures_by_rho_mu['p_off'][bad], label=r'$H_1$')
     ax_p_off_test_mu.fill_between(rhos, measures_by_rho_mu['lower_ci_p_off'],
@@ -234,7 +234,7 @@ def get_exponential_results(spawn_generators: Callable[[int], List[Generator]], 
     good = measures_by_rho_lam['test_p_off']
     bad = np.invert(good)
 
-    ax_p_off_test_lam.plot(rhos, exp_p_off(_lambda, rhos, theta), label=r'theoretical')
+    ax_p_off_test_lam.plot(rhos, exp_p_off(_lambda, rhos, THETA), label=r'theoretical')
     ax_p_off_test_lam.scatter(rhos[good], measures_by_rho_lam['p_off'][good], label=r'$H_0$')
     ax_p_off_test_lam.scatter(rhos[bad], measures_by_rho_lam['p_off'][bad], label=r'$H_1$')
     ax_p_off_test_lam.fill_between(rhos, measures_by_rho_lam['lower_ci_p_off'],
@@ -260,9 +260,7 @@ def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progr
     rhos = np.linspace(0.05, 0.95, STEPS)
     n = 10
     b = 0.1
-    theta = 0.2
 
-    all_esp_waits2 = []
     punctual_rho = rhos[len(rhos) // 2]
 
     measures_by_rho = defaultdict(list)
@@ -271,27 +269,22 @@ def get_erlang_results(spawn_generators: Callable[[int], List[Generator]], progr
         measures_same_rho = defaultdict(list)
 
         ref = {
-            "mean_sojourn": erlang_sojourn_time(_lambda, n, b, rho, theta),
-            "p_setup": erlang_p_setup(_lambda, n, b, rho, theta),
-            "p_off": erlang_p_off(_lambda, n, b, rho, theta)
+            "mean_sojourn": erlang_sojourn_time(_lambda, n, b, rho, THETA),
+            "p_setup": erlang_p_setup(_lambda, n, b, rho, THETA),
+            "p_off": erlang_p_off(_lambda, n, b, rho, THETA)
         }
         for _ in range(N_SIM):
-            results = erlang_simulation(spawn_generators(3), _lambda, n, b, theta, TAU)
+            results = erlang_simulation(spawn_generators(3), _lambda, n, b, THETA, TAU)
             measures = compute_measures(*results)
             append_measures(measures_same_rho, measures)
 
             if rho == punctual_rho:
                 waits = (results[2] - results[0])
-                esp_waits2 = (waits ** 2).mean()
-                all_esp_waits2.append(esp_waits2)
 
             progress_bar.update(1)
 
         append_measures(measures_by_rho, mean_measures(measures_same_rho, ref))
     measures_by_rho = {k: np.array(v) for k, v in measures_by_rho.items()}
-
-    esp_waits2 = np.mean(all_esp_waits2)
-    print(f"Measuring E[W^2] for rho = {punctual_rho} : {esp_waits2}")
 
     make_figure(rhos, measures_by_rho, 'erlang', 'mean_sojourn', r'\mathbb{E}[S]', 'time', exp_measures)
     make_figure(rhos, measures_by_rho, 'erlang', 'p_setup', 'P_{SETUP}', 'probability', exp_measures)
@@ -336,7 +329,7 @@ def main():
         plt.tight_layout()
         if args.save:
             for label in plt.get_figlabels():
-                plt.figure(label).savefig('./out/' + label + '.png')
+                plt.figure(label).savefig(f'./out/{label}.png')
             with open('./out/seed.txt', 'w+') as f:
                 f.write(str(seed_seq.entropy) + '\n')
         plt.show()
@@ -346,7 +339,7 @@ def main():
 
         w2_means = []
         for _ in range(10000):
-            arrivals, services, completions, states = erlang_simulation(spawn_generators(3), 0.5, 10, 0.1, 0.2, 20000)
+            arrivals, services, completions, states = erlang_simulation(spawn_generators(3), 0.5, 10, 0.1, 0.4, 20000)
             waits = completions - arrivals
             w2 = waits ** 2
             w2_mean = w2.mean()

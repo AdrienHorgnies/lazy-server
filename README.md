@@ -14,15 +14,18 @@ pip install -r requirements.txt
 ## Utilisation
 
 ```
-usage: main.py [-h] [seed]
+usage: main.py [-h] [--save-figures] [--w2] [seed]
 
-Produce the different graphs and measures presented in the project report.
+Produce the different results presented in the project report.
 
 positional arguments:
-  seed        seed to initialize the random generator
+  seed            seed to initialize the random generator
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help      show this help message and exit
+  --save-figures  Whether to save figures or not in ./out
+  --w2            Compute E[W^2] for rho = 0.5 INSTEAD of printing all the
+                  graphs
 ```
 
 ## Note

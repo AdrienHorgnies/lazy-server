@@ -1,8 +1,25 @@
+"""
+This module contains a function to generate figures.
+
+It has been introduced a bit late and has only been used for the Erlang system.
+"""
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def make_figure(rhos, data, prefix, measure_name, measure_symbol, unit_name, exp):
+    """
+    Generate figures for the Erlang system
+
+    :param rhos: list of values for the parameter rho
+    :param data: measures of the Erlang system simulations
+    :param prefix: prefix for the figures window and file name
+    :param measure_name:  name of the measure to pull from data
+    :param measure_symbol: symbol to display the measure
+    :param unit_name: unit of the measure
+    :param exp: measures of the exponential system simulations for comparison
+    :return: None
+    """
     fig, ax = plt.subplots()
     fig_name = f'{prefix}-{measure_name}'
     fig.canvas.set_window_title(fig_name)
