@@ -29,9 +29,9 @@ optional arguments:
 ```
 
 ## Note
-Le rapport utilise la graine 63605269805769599628681422967949126226.
+Le rapport utilise la graine 322555291929963904604360825690372611972.
 
-Cela a pris X minutes au programme à s'exécuter sur ma machine.
+Cela a pris ~5 minutes au programme pour s'exécuter sur ma machine pour générer les graphes et ~20 pour estimer E\[W^2\] (option -w2).
 
 ## Auteur
 
